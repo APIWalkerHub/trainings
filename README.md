@@ -16,7 +16,7 @@ MuleSoft is a leading integration platform that enables developers to connect di
 To get started with these exercises, follow these steps:
 
 1. Clone the Repository: Clone this repository to your local development environment using Git.
-````shell
+```shell
 Copy code
 git clone https://github.com/yourusername/mulesoft-exercises.git
 ```
