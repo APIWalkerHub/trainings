@@ -16,10 +16,10 @@ MuleSoft is a leading integration platform that enables developers to connect di
 To get started with these exercises, follow these steps:
 
 1. Clone the Repository: Clone this repository to your local development environment using Git.
-```shell
-Copy code
-git clone https://github.com/yourusername/mulesoft-exercises.git
-```
+    ```shell
+    Copy code
+    git clone https://github.com/yourusername/mulesoft-exercises.git
+    ```
 
 2. **Set Up MuleSoft:** Ensure you have MuleSoft Anypoint Studio installed on your computer. You can download it from the official MuleSoft website.
 3. **Select an Exercise:** Navigate to the exercise folder you wish to work on. Each exercise folder contains instructions and resources to complete the exercise.
