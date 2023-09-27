@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties" xmlns:twilio="http://www.mulesoft.org/schema/mule/twilio"
+	xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd
+http://www.mulesoft.org/schema/mule/twilio http://www.mulesoft.org/schema/mule/twilio/current/mule-twilio.xsd
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="823decf1-c7a4-4294-ab4a-0c99230ae74a" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<http:request-config name="HTTP_Request_configuration_local" doc:name="HTTP Request configuration" doc:id="d5711551-a7cd-4268-aba6-1951229861f7" >
+		<http:request-connection host="localhost" port="8081" />
+	</http:request-config>
+	<twilio:config name="Twilio_Connector_Config" doc:name="Twilio Connector Config" doc:id="1f124cac-d72e-44bc-98c2-4dec2307f797" >
+		<twilio:account-sid-auth-token-connection username="${secure::twilio.client_id}" password="${secure::twilio.client_password}" />
+	</twilio:config>
+	<secure-properties:config name="Secure_Properties_Config" doc:name="Secure Properties Config" doc:id="15bc51b1-b612-49aa-baf0-2627df0db990" file="local.properties.secure.yaml" key="${key}" >
+		<secure-properties:encrypt algorithm="Blowfish" />
+	</secure-properties:config>
+	<flow name="first-mule-projectFlow" doc:id="c17411a3-b496-4f97-914d-1ccab2112d45" >
+		<http:listener doc:name="Listener" doc:id="311ee8ec-3978-46e1-a12e-f7335ae3b3b7" config-ref="HTTP_Listener_config" path="note">
+			<http:error-response statusCode="#[attributes.statusCode]" >
+				<http:body ><![CDATA[#[payload]]]></http:body>
+			</http:error-response>
+		</http:listener>
+		<logger level="INFO" doc:name="Logger" doc:id="29353e8c-1115-42be-9617-68523ff2ad1f" message="#['This is my payload: ' ++ write(payload)]" />
+		<choice doc:name="Is note name empty?" doc:id="e9452b9e-2922-4d42-bbdf-1949f0e67012" >
+			<when expression="#[isEmpty(payload.name)]">
+				<raise-error doc:name="Incorrect input" doc:id="98ad3934-6163-40af-a408-63371ead78d5" type="NOTE:EMPTY_NOTE_NAME" description="Note name must not be empty" />
+			</when>
+			<when expression="#[isEmpty(payload.dest)]">
+				<raise-error doc:name="Incorrect input" doc:id="4ac687cf-342a-49ee-9476-f9d87d2cc775" type="NOTE:EMPTY_NOTE_DEST" description="Note destinator must not be empty" />
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message (just for XML transformation)" doc:id="d84bc897-1601-49ab-a2e6-d4a833448fbf">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+payload:payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+				<ee:transform doc:name="Transform Message" doc:id="e02d0bb7-5687-457a-a391-313989fc7a40">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/x-www-form-urlencoded
+---
+{
+	"Body": "Your note " ++ payload.payload.name ++ " has been created!",
+	"From": p('secure::twilio.phone_number'),
+	"To": payload.payload.dest
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+				<twilio:create20100401-accounts-messagesjson-by-account-sid doc:name="Create Message" doc:id="2b12e267-928f-460f-9494-827c5a580804" config-ref="Twilio_Connector_Config" accountSid="${secure::twilio.client_id}"/>
+				<ee:transform doc:name="Transform Message" doc:id="28cc1599-86d7-4e56-bae0-b425d1297cc0" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "Message sent!",
+	"data": payload
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<error-handler>
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="04176893-d0dc-4c04-ac02-eec6396a1b2a" >
+				<ee:transform doc:name="Transform Message" doc:id="a0558aed-9c5b-4670-ad91-268298840e40" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/xml
+---
+error:error]]></ee:set-payload>
+						<ee:set-attributes ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	"statusCode": 400
+}]]></ee:set-attributes>
+					</ee:message>
+				</ee:transform>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+</mule>
